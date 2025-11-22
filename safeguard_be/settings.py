@@ -156,3 +156,12 @@ paypalrestsdk.configure({
     "client_id": PAYPAL_CLIENT_ID,
     "client_secret": PAYPAL_CLIENT_SECRET
 })
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-safeguard-cache',
+    }
+}
+
+CACHE_TIMEOUT = 300

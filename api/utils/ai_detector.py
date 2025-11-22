@@ -17,7 +17,7 @@ class AbuseDetector:
             return self._fallback_analysis(text)
         
         try:
-            model = genai.GenerativeModel("gemini-2.0-flash")  # Use flash for faster responses
+            model = genai.GenerativeModel("gemini-2.5-flash")  # Use flash for faster responses
             
             prompt = f"""
             Analyze the following text for digital abuse. Your task is to detect abusive or harmful behavior and provide a clear, structured safety report.
@@ -68,7 +68,7 @@ class AbuseDetector:
             image_bytes = image_file.read()
             
             # Create the vision model
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            model = genai.GenerativeModel("gemini-2.5-flash")
             
             prompt = """
             Analyze this image for any digital abuse content. Look for:

@@ -1,6 +1,9 @@
+from django.core.cache import cache
+import hashlib
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from django.conf import settings
 
 from .serializers import (
     AbuseAnalysisSerializer, AnalysisResponseSerializer
@@ -9,8 +12,14 @@ from .serializers import (
 from .utils.ai_detector import AbuseDetector
 from .utils.text_processor import TextProcessor
 
-@api_view(['POST'])
+def generate_cache_key(content, content_type='text'):
+    """
+    Generate a unique cache key based on content and type
+    """
+    content_hash = hashlib.md5(content.encode() if isinstance(content, str) else content).hexdigest()
+    return f"safeguard_{content_type}_{content_hash}"
 
+@api_view(['POST'])
 def analyze_text(request):
     serializer = AbuseAnalysisSerializer(data=request.data)
     
@@ -19,8 +28,22 @@ def analyze_text(request):
     text = serializer.validated_data.get('text')
     language = serializer.validated_data.get("language", "en")
     
+    # Generate cache key
+    cache_key = generate_cache_key(text, 'text')
+    
+    # Check cache first
+    cached_result = cache.get(cache_key)
+    
+    if cached_result:
+        print(f"Cache HIT for text analysis: {cache_key}")
+        response_serializer = AnalysisResponseSerializer(cached_result)
+        return Response(response_serializer.data)
+    
+    print(f"Cache MISS for text analysis: {cache_key}")
+    
     detector = AbuseDetector()
     analysis_result = detector.analyze_text(text)
+    cache.set(cache_key, analysis_result, settings.CACHE_TIMEOUT)
     
     response_serializer = AnalysisResponseSerializer(analysis_result)
     return Response(response_serializer.data)
@@ -34,6 +57,7 @@ def analyze_image(request):
             status=status.HTTP_400_BAD_REQUEST
         )
     
+    
     image_file = request.FILES['image']
     
     # Validate image file
@@ -42,10 +66,27 @@ def analyze_image(request):
             {'error': 'File must be an image'},
             status=status.HTTP_400_BAD_REQUEST
         )
+    # Read image content for cache key
+    image_content = image_file.read()
+    image_file.seek(0)  # Reset file pointer for processing
+    
+    # Generate cache key from image content
+    cache_key = generate_cache_key(image_content, 'image')
+    
+    # Check cache first
+    cached_result = cache.get(cache_key)
+    if cached_result:
+        print(f"Cache HIT for image analysis: {cache_key}")
+        response_serializer = AnalysisResponseSerializer(cached_result)
+        return Response(response_serializer.data)
+    
+    print(f"Cache MISS for image analysis: {cache_key}")    
     
     # Analyze image directly using AI vision
     detector = AbuseDetector()
     analysis_result = detector.analyze_image(image_file)
+    
+    cache.set(cache_key, analysis_result, settings.CACHE_TIMEOUT)
     
     response_serializer = AnalysisResponseSerializer(analysis_result)
     return Response(response_serializer.data)

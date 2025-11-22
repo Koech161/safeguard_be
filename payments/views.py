@@ -3,6 +3,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 
+
+
 @csrf_exempt
 def create_payment(request):
     amount = request.POST.get("amount", "5.00")
